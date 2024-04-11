@@ -1,0 +1,49 @@
+openapi: 3.0.2
+info:
+  title: Grobuzin Language Specific Agent API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Local server
+
+paths:
+  /:
+    post:
+      requestBody:
+        description: The body to prodide to the function, free form
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StandardResponse"
+        "500":
+          description: The function execution encountered an error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    StandardResponse:
+      type: object
+      properties:
+        status:
+          type: number
+        body:
+          type: object
+          description: The body of the response, free form
+        headers:
+          type: object
+          description: The headers of the response, used as a map
