@@ -1,0 +1,62 @@
+openapi: 3.0.2
+info:
+  title: Grobuzin Main Agent API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local server
+
+paths:
+  /execute:
+    post:
+      summary: Execute the function
+      requestBody:
+        required: true
+        description: The body to prodide to the function, free form
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    $ref: "#/components/schemas/StandardResponse"
+                  time:
+                    type: number
+                    description: Milliseconds taken to execute the function
+        "400":
+          description: Bad request to the agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Parsing or network error, not the result of the function
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    StandardResponse:
+      type: object
+      properties:
+        status:
+          type: number
+        body:
+          type: object
+          description: The body of the response, free form
+        headers:
+          type: object
+          description: The headers of the response, used as a map
