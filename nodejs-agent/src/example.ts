@@ -2,7 +2,7 @@
 
 import { IncomingMessage } from "http";
 
-export function run(req: IncomingMessage) {
+export async function run(req: IncomingMessage) {
   console.log("Hello World!");
 
   // Return a simple JSON response
