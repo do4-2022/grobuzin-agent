@@ -1,0 +1,251 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"path"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/archive"
+)
+
+type Docker struct {
+	client *client.Client
+}
+
+func (d *Docker) buildImage(buildContextFolder string, include_files []string, dockerfilePath string, tags []string) (logs string, err error) {
+
+	buildOptions := types.ImageBuildOptions{
+		Tags:       tags,
+		Dockerfile: dockerfilePath,
+		Remove:     true,
+	}
+
+	archive, err := archive.TarWithOptions(buildContextFolder, &archive.TarOptions{
+		IncludeFiles: include_files,
+	})
+	if err != nil {
+		return
+	}
+
+	resp, err := d.client.ImageBuild(context.Background(), archive, buildOptions)
+
+	if err != nil {
+		return
+	}
+
+	defer resp.Body.Close()
+
+	buffer := bytes.NewBuffer(nil)
+
+	io.Copy(buffer, resp.Body)
+
+	logs = buffer.String()
+
+	return
+}
+
+func createRootfs(filename string, size int) (err error) {
+
+	// Create the file
+	file, err := os.Create(filename)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	// Set the file size by writing a single zero byte at the last position
+	_, err = file.WriteAt([]byte{0}, int64(size-1))
+	if err != nil {
+		return
+	}
+
+	// Close the file as mkfs.ext4 needs to be run on a closed file
+	file.Close()
+
+	// Run mkfs.ext4 to create an ext4 filesystem in the file
+	cmd := exec.Command("mkfs.ext4", "-F", filename)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+	}
+
+	return
+}
+
+func (d *Docker) copyToRootfs(image string, rootfs string, agent_repo_folder string) (err error) {
+
+	mountPath := "/tmp/rootfs"
+
+	_, err = os.Stat(mountPath)
+
+	if err != nil && !os.IsNotExist(err) {
+		return
+	}
+	if !os.IsNotExist(err) {
+		os.RemoveAll(mountPath)
+	}
+
+	// mount the image file into the folder
+
+	err = os.MkdirAll(mountPath, 0755)
+
+	if err != nil {
+		return
+	}
+
+	out, err := exec.Command("mount", rootfs, mountPath).CombinedOutput()
+
+	if err != nil {
+		fmt.Println(string(out))
+		return
+	}
+
+	defer exec.Command("umount", mountPath).Run()
+
+	// mount the folder into the container
+	hostConfig := &container.HostConfig{
+		Mounts: []mount.Mount{
+			{
+				Type:   mount.TypeBind,
+				Source: mountPath,
+				Target: "/mnt/my-rootfs",
+			},
+		},
+	}
+
+	containerConfig := &container.Config{
+		Image: image,
+		Cmd:   []string{"sh", "-c", "/copy/image-builder/copy.sh"},
+	}
+
+	containerResp, err := d.client.ContainerCreate(context.Background(), containerConfig, hostConfig, nil, nil, "")
+
+	if err != nil {
+		return
+	}
+
+	containerID := containerResp.ID
+
+	// copy ./copy.sh script into the container
+
+	copyScript, err := archive.TarWithOptions(agent_repo_folder, &archive.TarOptions{
+		IncludeFiles: []string{"image-builder/copy.sh", "main-agent/openrc/agent"},
+	})
+
+	if err != nil {
+		return
+	}
+
+	err = d.client.CopyToContainer(context.Background(), containerID, "/copy", copyScript, types.CopyToContainerOptions{})
+
+	if err != nil {
+		return
+	}
+
+	err = d.client.ContainerStart(context.Background(), containerID, container.StartOptions{})
+
+	log.Println("Container started", containerID)
+
+	if err != nil {
+		return
+	}
+
+	// wait for the container to be started
+	statusCh, errCh := d.client.ContainerWait(context.Background(), containerID, container.WaitConditionNotRunning)
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case <-statusCh:
+	}
+
+	return
+
+}
+
+func main() {
+	agent_repo_folder := os.Getenv("AGENT_REPO_FOLDER")
+	if agent_repo_folder == "" {
+		agent_repo_folder = "../"
+	}
+
+	apiClient, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		panic(err)
+	}
+	defer apiClient.Close()
+
+	docker := Docker{client: apiClient}
+
+	var logs string
+
+	logs, err = docker.buildImage(agent_repo_folder, []string{"main-agent"}, "main-agent/Dockerfile", []string{"grobuzin/main-agent:latest"})
+
+	if err != nil {
+		fmt.Println(err, logs)
+
+		os.Exit(1)
+	}
+
+	variant := "nodejs"
+
+	// TODO: copy user code in user-code folder in the root of this repo
+
+	os.RemoveAll(path.Join(agent_repo_folder, "user-code"))
+	err = os.Mkdir(path.Join(agent_repo_folder, "user-code"), 0755)
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// here we copy the example nodejs code
+
+	out, err := exec.Command("cp", "-r", agent_repo_folder+"/nodejs/example/.", agent_repo_folder+"/user-code").CombinedOutput()
+	if err != nil {
+		fmt.Println(string(out), err)
+		os.Exit(1)
+	}
+
+	logs, err = docker.buildImage(agent_repo_folder, []string{"user-code", variant}, variant+"/Dockerfile", []string{"grobuzin/nodejs-agent:latest"})
+
+	fmt.Println(logs)
+
+	if err != nil {
+		fmt.Println(err, logs)
+
+		os.Exit(1)
+	}
+
+	// Create a 1GB ext4 filesystem
+
+	err = createRootfs("rootfs.ext4", 1024*1024*1024)
+
+	if err != nil {
+		fmt.Println(err)
+
+		os.Exit(1)
+	}
+
+	err = docker.copyToRootfs("grobuzin/nodejs-agent:latest", "rootfs.ext4", agent_repo_folder)
+
+	if err != nil {
+		fmt.Println(err)
+
+		os.Exit(1)
+	}
+
+	fmt.Println("Image built successfully!")
+
+}
