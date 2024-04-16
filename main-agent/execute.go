@@ -38,6 +38,7 @@ func execute(c *gin.Context) {
 		return
 	}
 
+	isRunning = true
 	start := time.Now()
 
 	resp, err := http.Post("http://localhost:3000/", "application/json", bytes.NewBuffer(body))
@@ -60,4 +61,6 @@ func execute(c *gin.Context) {
 		Response: response,
 		Time:     elapsed,
 	})
+
+	isRunning = false
 }
