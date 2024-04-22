@@ -1,0 +1,59 @@
+openapi: "3.0.2"
+info:
+  title: Grobuzin builder API
+  version: "1.0"
+servers:
+  - url: http://localhost:8080
+    description: Local server
+paths:
+  /build:
+    post:
+      description: Build a new image from the provided code, updates the 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variant:
+                  type: string
+                  description: The engine variant to use
+                  enum: [nodejs]
+                files:
+                  type: object
+                  description: The files to build the image from
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: The image has been scheduled for building
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Image build started
+        '400':
+          description: The request was invalid, invalid JSON or invalid variant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: The error message
+        '500':
+          description: An error occurred, probably an I/O error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: The error message
+          
