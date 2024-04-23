@@ -16,6 +16,9 @@ paths:
             schema:
               type: object
               properties:
+                id:
+                  type: string
+                  description: The ID of the function to build
                 variant:
                   type: string
                   description: The engine variant to use

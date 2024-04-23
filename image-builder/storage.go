@@ -18,7 +18,6 @@ type StorageService struct {
 
 func StartStorageConnection(endpoint string, accessKeyID string, secretAccessKey string, storageSecure string) (storageService StorageService, err error) {
 	client, err := minio.New(
-
 		endpoint, &minio.Options{
 			Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
 			Secure: storageSecure == "true",
@@ -31,6 +30,6 @@ func StartStorageConnection(endpoint string, accessKeyID string, secretAccessKey
 }
 
 func (s *StorageService) UploadFile(objectName string, filePath string) (err error) {
-	_, err = s.Client.FPutObject(context.Background(), bucketName, objectName, filePath, minio.PutObjectOptions{})
+	_, err = s.Client.FPutObject(context.Background(), bucketName, objectName, filePath, minio.PutObjectOptions{ContentType: "application/octet-stream"})
 	return
 }

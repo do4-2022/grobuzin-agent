@@ -34,9 +34,9 @@ func startApi(agentRepoFolder string, dockerClient *Docker, storageService *Stor
 }
 
 type buildBody struct {
-	Id      string `json:"id"`
-	Variant string `json:"variant"`
-	Files   map[string]string
+	Id      string            `json:"id"`
+	Variant string            `json:"variant"`
+	Files   map[string]string `json:"files"`
 }
 
 func (controller *Controller) build(c *gin.Context) {
@@ -65,7 +65,15 @@ func (controller *Controller) build(c *gin.Context) {
 
 	userCodeFolder := path.Join(controller.AgentRepoFolder, "user-code")
 
-	os.RemoveAll(userCodeFolder)
+	err = os.RemoveAll(userCodeFolder)
+	if err != nil {
+		log.Println(err)
+		c.JSON(500, gin.H{
+			"error": "Filesystem error",
+		})
+		return
+	}
+
 	err = os.Mkdir(userCodeFolder, 0755)
 
 	if err != nil {
@@ -100,23 +108,23 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 		err = os.MkdirAll(path.Join(userCodeFolder, folder), 0755)
 
 		if err != nil {
-			log.Println(err)
+			log.Println("err : ", err)
 			return
 		}
 
-		filePath := path.Join(userCodeFolder, folder)
+		filePath := path.Join(userCodeFolder, key)
 
 		file, err := os.Create(filePath)
 
 		if err != nil {
-			log.Println(err)
+			log.Println("err : ", err)
 			return
 		}
 
 		_, err = file.WriteString(value)
 
 		if err != nil {
-			log.Println(err)
+			log.Println("err : ", err)
 			return
 		}
 	}
@@ -127,7 +135,7 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 	logs, err = dockerClient.buildImage(agentRepoFolder, []string{"user-code", variant}, variant+"/Dockerfile", []string{"grobuzin/nodejs-agent:latest"})
 
 	if err != nil {
-		log.Println(err, logs)
+		log.Println("err:", err, logs)
 		return
 	}
 
@@ -138,23 +146,25 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 	err = createRootfs(rootfLocation, 1024*1024*1024)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("err : ", err)
 		return
 	}
 
 	err = dockerClient.copyToRootfs("grobuzin/nodejs-agent:latest", rootfLocation, agentRepoFolder)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("err : ", err)
 		return
 	}
 
 	objectLocation := fmt.Sprintf("function/%s/rootfs.ext4", body.Id)
 
+	println("Uploading file to ", objectLocation)
+
 	err = storageService.UploadFile(objectLocation, rootfLocation)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("upload err : ", err)
 		return
 	}
 
@@ -162,7 +172,9 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 	err = SetFunctionReady(db, body.Id)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("err : ", err)
 		return
 	}
+
+	log.Println("Image build complete")
 }

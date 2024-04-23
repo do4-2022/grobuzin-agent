@@ -123,7 +123,7 @@ func (d *Docker) copyToRootfs(image string, rootfs string, agent_repo_folder str
 
 	containerConfig := &container.Config{
 		Image: image,
-		Cmd:   []string{"sh", "-c", "/copy/image-builder/copy.sh"},
+		Cmd:   []string{"sh", "-c", "/image-builder/copy.sh"},
 	}
 
 	containerResp, err := d.client.ContainerCreate(context.Background(), containerConfig, hostConfig, nil, nil, "")
@@ -144,7 +144,7 @@ func (d *Docker) copyToRootfs(image string, rootfs string, agent_repo_folder str
 		return
 	}
 
-	err = d.client.CopyToContainer(context.Background(), containerID, "/copy", copyScript, types.CopyToContainerOptions{})
+	err = d.client.CopyToContainer(context.Background(), containerID, "/", copyScript, types.CopyToContainerOptions{})
 
 	if err != nil {
 		return
@@ -166,7 +166,9 @@ func (d *Docker) copyToRootfs(image string, rootfs string, agent_repo_folder str
 		if err != nil {
 			return err
 		}
-	case <-statusCh:
+	case a := <-statusCh:
+
+		log.Println("Container finished", a.StatusCode)
 	}
 
 	return
