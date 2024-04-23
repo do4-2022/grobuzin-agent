@@ -2,3 +2,5 @@ image-builder
 
 rootfs
 rootfs.ext4
+
+.env

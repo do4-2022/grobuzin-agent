@@ -2,12 +2,18 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/docker/docker/client"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	agentRepoFolder := os.Getenv("AGENT_REPO_FOLDER")
 	if agentRepoFolder == "" {
 		agentRepoFolder = "../"

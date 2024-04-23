@@ -5,6 +5,7 @@ go 1.21.0
 require (
 	github.com/docker/docker v26.0.1+incompatible
 	github.com/gin-gonic/gin v1.9.1
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.69
 )
