@@ -8,7 +8,7 @@ servers:
 paths:
   /build:
     post:
-      description: Build a new image from the provided code, updates the database to set `functions.ready` to `true` after the image is built
+      description: Build a new image from the provided code, updates the database to set `functions.built` to `true` after the image is built
       requestBody:
         required: true
         content:
