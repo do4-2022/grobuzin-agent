@@ -39,6 +39,7 @@ func execute(c *gin.Context) {
 	}
 
 	start := time.Now()
+	status = Running
 
 	resp, err := http.Post("http://localhost:3000/", "application/json", bytes.NewBuffer(body))
 
@@ -55,6 +56,8 @@ func execute(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	status = Ready
 
 	c.JSON(200, ExecuteResponse{
 		Response: response,
