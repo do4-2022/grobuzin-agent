@@ -12,6 +12,6 @@ func StartDBConnection(connectionStr string) (db *sql.DB, err error) {
 }
 
 func SetFunctionReady(db *sql.DB, id string) (err error) {
-	_, err = db.Exec("UPDATE functions SET ready = true WHERE id = $1", id)
+	_, err = db.Exec("UPDATE functions SET built = true WHERE id = $1", id)
 	return
 }
