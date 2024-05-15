@@ -2,7 +2,7 @@
 
 command="/app/main-agent"
 command_args=""
-pidfile="/var/run/main-agent.pid"
+supervisor="supervise-daemon"
 name="Grobuzin agent"
 
 depend() {
@@ -10,22 +10,8 @@ depend() {
     after firewall
 }
 
-start_pre() {
-    # Commands to run before starting the service
-}
-
-start() {
-    ebegin "Starting Main Agent"
-    start-stop-daemon --start --exec $command -- $command_args
-    eend $?
-}
-
 stop() {
     ebegin "Stopping Main Agent"
     start-stop-daemon --stop --exec $command
     eend $?
-}
-
-status() {
-    status -p $pidfile $command
 }

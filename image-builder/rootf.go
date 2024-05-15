@@ -49,6 +49,8 @@ func (d *Docker) buildImage(buildContextFolder string, include_files []string, d
 
 	logs = buffer.String()
 
+	log.Println(logs)
+
 	return
 }
 
