@@ -28,18 +28,25 @@ func (d *Docker) buildImage(buildContextFolder string, include_files []string, d
 		Remove:     true,
 	}
 
+	log.Println("Tar files", include_files)
+
 	archive, err := archive.TarWithOptions(buildContextFolder, &archive.TarOptions{
-		IncludeFiles: include_files,
+		IncludeFiles:    include_files,
+		ExcludePatterns: []string{"*node_modules*"},
 	})
 	if err != nil {
 		return
 	}
 
+	defer archive.Close()
+
+	log.Println("Building image")
 	resp, err := d.client.ImageBuild(context.Background(), archive, buildOptions)
 
 	if err != nil {
 		return
 	}
+	log.Println("image build started")
 
 	defer resp.Body.Close()
 

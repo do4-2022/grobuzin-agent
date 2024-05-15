@@ -34,9 +34,9 @@ func startApi(agentRepoFolder string, dockerClient *Docker, storageService *Stor
 }
 
 type buildBody struct {
-	Id      string            `json:"id"`
-	Variant string            `json:"variant"`
-	Files   map[string]string `json:"files"`
+	Id      string            `json:"id" binding:"required"`
+	Variant string            `json:"variant" binding:"required"`
+	Files   map[string]string `json:"files" binding:"required"`
 }
 
 func (controller *Controller) build(c *gin.Context) {
@@ -137,7 +137,7 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 	logs, err = dockerClient.buildImage(agentRepoFolder, []string{"user-code", variant}, variant+"/Dockerfile", []string{image_name})
 
 	if err != nil {
-		log.Println("err:", err, logs)
+		log.Println("buildimage err:", err, logs)
 		return
 	}
 
@@ -148,18 +148,18 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 	err = createRootfs(rootfLocation, 1024*1024*1024)
 
 	if err != nil {
-		log.Println("err : ", err)
+		log.Println("createRootfs err : ", err)
 		return
 	}
 
 	err = dockerClient.copyToRootfs(image_name, rootfLocation, agentRepoFolder)
 
 	if err != nil {
-		log.Println("err : ", err)
+		log.Println("copyToRootfs err : ", err)
 		return
 	}
 
-	objectLocation := fmt.Sprintf("function/%s/rootfs.ext4", body.Id)
+	objectLocation := fmt.Sprintf("%s/rootfs.ext4", body.Id)
 
 	println("Uploading file to ", objectLocation)
 
