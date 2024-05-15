@@ -131,8 +131,10 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 
 	// build the image
 
+	image_name := fmt.Sprintf("grobuzin/%s-%s:latest", variant, body.Id)
+
 	var logs string
-	logs, err = dockerClient.buildImage(agentRepoFolder, []string{"user-code", variant}, variant+"/Dockerfile", []string{"grobuzin/nodejs-agent:latest"})
+	logs, err = dockerClient.buildImage(agentRepoFolder, []string{"user-code", variant}, variant+"/Dockerfile", []string{image_name})
 
 	if err != nil {
 		log.Println("err:", err, logs)
@@ -150,7 +152,7 @@ func buildForked(body buildBody, agentRepoFolder string, dockerClient *Docker, s
 		return
 	}
 
-	err = dockerClient.copyToRootfs("grobuzin/nodejs-agent:latest", rootfLocation, agentRepoFolder)
+	err = dockerClient.copyToRootfs(image_name, rootfLocation, agentRepoFolder)
 
 	if err != nil {
 		log.Println("err : ", err)

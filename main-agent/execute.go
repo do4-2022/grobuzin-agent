@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -25,22 +24,10 @@ type ExecuteResponse struct {
 }
 
 func execute(c *gin.Context) {
-	var request ExecuteRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	body, err := json.Marshal(request.Body)
-
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
 
 	start := time.Now()
 
-	resp, err := http.Post("http://localhost:3000/", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post("http://localhost:3000/", "application/json", c.Request.Body)
 
 	elapsed := time.Since(start).Milliseconds()
 

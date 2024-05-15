@@ -15,4 +15,3 @@ popd
 cp linux.git/vmlinux .
 
 echo "Kernel build complete, vmlinux is ready"
- 
