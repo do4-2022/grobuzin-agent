@@ -42,5 +42,5 @@ RUN apk add nodejs npm
 COPY ./nodejs/agent-config.json /etc/grobuzin/agent-config.json
 
 COPY --from=main-agent /build/main-agent/main-agent .
-COPY --from=builder /build/dist/* .
+COPY --from=builder /build/dist/* ./
 COPY --from=user-code /build/. ./function
